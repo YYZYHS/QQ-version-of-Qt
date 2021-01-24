@@ -11,6 +11,11 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
+#include <QString>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QGridLayout>
+#include <QHeaderView>
 
 class QTextBrowser;
 class QFontComboBox;
@@ -45,6 +50,7 @@ private:
     QPushButton *sendBtn;//发送按钮
     QLabel *usrNumlabel;//在线用户数
     QPushButton *exitBtn;//退出按钮
+    QPushButton *refreshBtn;//刷新按钮
     QLineEdit *chooseusrNumber;//选择用户编号
 
 
