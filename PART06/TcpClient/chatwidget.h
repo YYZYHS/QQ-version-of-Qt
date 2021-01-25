@@ -90,6 +90,7 @@ private slots:
 
     //PART06_1
     void receiveMessage();//接收信息
+    void sendMessage();
 
 };
 #endif // CHATWIDGET_H

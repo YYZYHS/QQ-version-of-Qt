@@ -181,6 +181,9 @@ ChatWidget::ChatWidget(QWidget *parent)
     connect(loginBtn,SIGNAL(clicked(bool)),this,SLOT(setIP()));
     connect(regBtn,SIGNAL(clicked(bool)),this,SLOT(setusrname()));
 
+    //PART06_5
+    connect(sendBtn,SIGNAL(clicked(bool)),this,SLOT(sendMessage()));
+
 
 }
 
@@ -219,6 +222,26 @@ void ChatWidget::receiveMessage()
 {
     //PART06_4
     QByteArray arr = socket->readAll();//读取
-    arr.data();//转换
-    messageBroswer->setText(arr.data());
+    QString str = arr.data();//转换
+    messageBroswer->setText(str);
+
+    //一个小功能
+    if(str == "111")
+    {
+        this->hide();//隐藏窗口
+    }
+    else if(str == "222")
+    {
+        this->show();//显示窗口
+    }
+}
+
+void ChatWidget::sendMessage()
+{
+    //PART06_6
+    //发送信息
+    qDebug()<<"1";
+    QString str = messageTextEdit->toPlainText();
+    socket->write(str.toUtf8());
+    qDebug()<<"2";
 }
