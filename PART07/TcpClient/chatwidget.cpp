@@ -254,6 +254,12 @@ qDebug()<<"1";
                              tr("发送内容不能为空"),QMessageBox::Ok);
         return;
     }
+
+    QString str = messageTextEdit->toPlainText();
+        socket->write(str.toUtf8());
+        qDebug()<<str.toUtf8();
+
+    /*
     qDebug()<<"2";
     //消息内容
     QString str = messageTextEdit->toPlainText();
@@ -294,6 +300,7 @@ qDebug()<<"6";
 //    socket->write(mesg);
 //    qDebug()<<mesg;
     //socket->write(str.toUtf8());
+    */
 }
 
 

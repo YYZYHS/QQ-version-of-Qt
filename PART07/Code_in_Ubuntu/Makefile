@@ -1,2 +1,4 @@
-main:serilser.c
-	gcc serilser.c -o serilser -lpthread
+server:serilser.c
+	@gcc -g $< -o $@ -lpthread
+clean:
+	@rm server core
