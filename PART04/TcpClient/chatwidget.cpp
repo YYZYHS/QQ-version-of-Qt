@@ -1,5 +1,5 @@
 ﻿#include "chatwidget.h"
-
+#include <QDebug>
 
 
 ChatWidget::ChatWidget(QWidget *parent)
@@ -25,8 +25,8 @@ ChatWidget::ChatWidget(QWidget *parent)
     sendBtn = new QPushButton(this);//发送按钮
     usrNumlabel = new QLabel(this);//在线用户数
     exitBtn = new QPushButton(this);//退出按钮
-    chooseusrNumber = new QLineEdit(this);//选择用户编号
-    refreshBtn = new QPushButton(this);
+    chooseusrNumber = new QLineEdit(this);//选择用户编号   
+    refreshBtn = new QPushButton(this);//刷新
 
     ///////////////////设置窗口属性//////////////////////
 
@@ -116,6 +116,23 @@ ChatWidget::ChatWidget(QWidget *parent)
     chooseusrNumber->setPlaceholderText(QString("请输入要发送的用户编号"));
 
     //////////////////////////////布局管理///////////////////////
+
+
+    //PART4大改版添加
+    loginBtn = new QPushButton(this);//登陆
+    regBtn = new QPushButton(this);//注册
+
+    loginBtn->setText(QString("设置服务器IP和端口号"));
+    regBtn->setText(QString("设置客户端用户名"));
+
+    QHBoxLayout *horizontalLayout_6 = new QHBoxLayout;
+    horizontalLayout_6->addWidget(loginBtn);
+    horizontalLayout_6->addWidget(regBtn);
+
+    setWindowIcon(QIcon(":/Image/Image/217c8d364111f8013a8afe7fc51fe572.png"));
+
+
+
     //窗口一：各种ToolButton+字体组合框  水平布局
     QHBoxLayout *horizontalLayout_1 = new QHBoxLayout;
     horizontalLayout_1->addWidget(fontComboBox);
@@ -131,6 +148,8 @@ ChatWidget::ChatWidget(QWidget *parent)
     //窗口二：信息文字浏览器+窗口一+消息输入框  垂直布局
     QVBoxLayout *horizontalLayout_2 = new QVBoxLayout;
     horizontalLayout_2->addWidget(messageBroswer);
+    //PART04新增加内容
+    horizontalLayout_2->addLayout(horizontalLayout_6);
     horizontalLayout_2->addLayout(horizontalLayout_1);
     horizontalLayout_2->addWidget(messageTextEdit);
 
@@ -156,6 +175,10 @@ ChatWidget::ChatWidget(QWidget *parent)
     //加入主窗口
     setLayout(horizontalLayout_5);
 
+    //PART04大改版添加
+    connect(loginBtn,SIGNAL(clicked(bool)),this,SLOT(setIP()));
+    connect(regBtn,SIGNAL(clicked(bool)),this,SLOT(setusrname()));
+
 
 }
 
@@ -163,3 +186,14 @@ ChatWidget::~ChatWidget()
 {
 }
 
+void ChatWidget::setIP()
+{
+    Login a;
+    a.exec();
+}
+
+void ChatWidget::setusrname()
+{
+    Registered b;
+    b.exec();
+}

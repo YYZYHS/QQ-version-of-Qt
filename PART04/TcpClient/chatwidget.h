@@ -17,6 +17,11 @@
 #include <QGridLayout>
 #include <QHeaderView>
 
+//PART04改版添加
+#include "login.h"
+#include "registered.h"
+
+
 class QTextBrowser;
 class QFontComboBox;
 class QComboBox;
@@ -26,6 +31,9 @@ class QTableWidget;
 class QLineEdit;
 class QPushButton;
 class QLabel;
+
+class Login;
+class Registered;
 
 class ChatWidget : public QWidget
 {
@@ -53,11 +61,13 @@ private:
     QPushButton *refreshBtn;//刷新按钮
     QLineEdit *chooseusrNumber;//选择用户编号
 
+    //PART04改版添加
+    QPushButton *loginBtn;//登陆弹窗按钮
+    QPushButton *regBtn;//注册弹窗按钮
+
 private slots:
-
-
-
-
+    void setIP();
+    void setusrname();
 
 };
 #endif // CHATWIDGET_H
