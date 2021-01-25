@@ -2,6 +2,10 @@
 #include <QDebug>
 #include <string.h>
 
+bool boldBtn = 1;
+bool italBtn = 1;
+bool underBtn = 1;
+
 
 ChatWidget::ChatWidget(QWidget *parent)
     : QWidget(parent)
@@ -178,13 +182,23 @@ ChatWidget::ChatWidget(QWidget *parent)
     //加入主窗口
     setLayout(horizontalLayout_5);
 
-    //PART04大改版添加
     connect(loginBtn,SIGNAL(clicked(bool)),this,SLOT(setIP()));
     connect(regBtn,SIGNAL(clicked(bool)),this,SLOT(setusrname()));
-
-    //PART06_5
     connect(sendBtn,SIGNAL(clicked(bool)),this,SLOT(sendMessage()));
 
+    /*PART07*/
+
+    connect(fontComboBox,SIGNAL(currentFontChanged(const QFont)),this,SLOT(fontComboBoxcurrentFontChanged(const QFont)));
+    connect(sizeCombox,SIGNAL(currentIndexChanged(const QString)),this,SLOT(sizeComboBox_currentIndexChanged(const QString)));
+    connect(boldTolBtn,SIGNAL(clicked(bool)),this,SLOT(boldToolBtn_clicked(bool)));
+    connect(italicToolBtn,SIGNAL(clicked(bool)),this,SLOT(italicToolBtn_clicked(bool)));
+    connect(underlineToolBtn,SIGNAL(clicked(bool)),this,SLOT(underlineToolBtn_clicked(bool)));
+    connect(colorToolBtn,SIGNAL(clicked(bool)),this,SLOT(colorToolBtn_clicked()));
+    connect(saveToolBtn,SIGNAL(clicked(bool)),this,SLOT(saveToolBtn_clicked()));
+    connect(clearToolBtn,SIGNAL(clicked(bool)),this,SLOT(clearToolBtn_clicked()));
+    connect(exitBtn,SIGNAL(clicked(bool)),this,SLOT(exitButton_clicked()));
+    connect(messageTextEdit, SIGNAL(currentCharFormatChanged(QTextCharFormat)),
+                this, SLOT(currentFormatChanged(const QTextCharFormat)));
 
 }
 
@@ -225,6 +239,7 @@ void ChatWidget::receiveMessage()
     QByteArray arr = socket->readAll();//读取
     QString str = arr.data();//转换
     messageBroswer->setText(str);
+    //messageBroswer->verticalScrollBar();
 
     //一个小功能
     if(str == "111")
@@ -247,7 +262,6 @@ void ChatWidget::sendMessage()
     //1 ---- 发送文件
     //2 ---- 请求刷新在线用户列表
     //3 ---- 注册用户
-qDebug()<<"1";
     if(messageTextEdit->toPlainText() == "")
     {
         QMessageBox::warning(0,tr("警告"),
@@ -255,71 +269,161 @@ qDebug()<<"1";
         return;
     }
 
+    QString aim = chooseusrNumber->text();
     QString str = messageTextEdit->toPlainText();
-        socket->write(str.toUtf8());
-        qDebug()<<str.toUtf8();
-
-    /*
-    qDebug()<<"2";
-    //消息内容
-    QString str = messageTextEdit->toPlainText();
-    char buf[1022];
-    QByteArray ba = str.toLocal8Bit();
-    memcpy(buf,ba.data(),ba.size()+1);//加1是为了最后的终结符，否则转换回来的时候不知道什么时候截止
-qDebug()<<"3";
-    //控制位和选择位
-    char control[1024];
-    char chose[1023];
-qDebug()<<"4";
-    control[0] = '0';
-    QString str1 = chooseusrNumber->text();
-    QByteArray ba1 = str1.toLocal8Bit();
-    memcpy(chose,ba1.data(),ba.size()+1);
-qDebug()<<"5";
-    //合并
-//    char *bufBefore = stringCatenate(control,chose);
-//    char *buffe = stringCatenate(bufBefore,buf);
-    stringCatenate(control,chose);
-    stringCatenate(control,buf);
-    qDebug()<<control;
-    qDebug()<<control[0];
-    qDebug()<<control[1];
-qDebug()<<"6";
-    //发送
-    socket->write(control);
-//    char bufBefore[1024];
-//    //memset(&bufBefore,9,sizeof(bufBefore));
-//    bufBefore[0] = '0';//控制位
-//    QString str1 = chooseusrNumber->text();
-//    QByteArray ba1 = str1.toLocal8Bit();
-//    memcpy(bufBefore)
-//    //bufBefore[1] = chooseusrNumber->text();//目标位
-
-//    //合流
-//    char *mesg = strcat(bufBefore,bufAfter);
-//    socket->write(mesg);
-//    qDebug()<<mesg;
-    //socket->write(str.toUtf8());
-    */
+    QString data;
+    QTextStream out(&data,QIODevice::WriteOnly);
+    out<<0<<aim<<str;
+    socket->write(data.toUtf8().data(),strlen(data.toUtf8().data()));
 }
 
-
-char *ChatWidget::stringCatenate(char *dest_str, char *src_str)
+// 更改字体族
+void ChatWidget::fontComboBoxcurrentFontChanged(const QFont &f)
 {
-    char *dtemp = NULL;
-    char *stemp = NULL;
-    dtemp = dest_str;
-    stemp = src_str;
-    while(*dtemp != '\0')
-    {
-        dtemp++;
-    }
-    while(*stemp != '\0')
-    {
-        *dtemp = *stemp;
-        dtemp++;
-        stemp++;
-    }
-    *dtemp = '\0';
-    return dest_str;
+    qDebug()<<"123";
+    this->messageTextEdit->setCurrentFont(f);
+    this->messageTextEdit->setFocus();
 }
+// 更改字体大小
+void ChatWidget::sizeComboBox_currentIndexChanged(const QString &arg1)
+{
+    this->messageTextEdit->setFontPointSize(arg1.toDouble());
+    this->messageTextEdit->setFocus();
+}
+// 加粗
+void ChatWidget::boldToolBtn_clicked(bool checked)
+{
+    qDebug()<<"321";
+    if(boldBtn)//boldBtn == 1
+    {
+        this->messageTextEdit->setFontWeight(QFont::Bold);
+        boldBtn = 0;
+    }
+
+        else
+    {
+        this->messageTextEdit->setFontWeight(QFont::Normal);
+        boldBtn = 1;
+    }
+        this->messageTextEdit->setFocus();
+}
+// 倾斜
+void ChatWidget::italicToolBtn_clicked(bool checked)
+{
+    this->messageTextEdit->setFontItalic(italBtn);
+    if(italBtn)
+    {
+        italBtn = 0;
+    }
+    else
+    {
+        italBtn = 1;
+    }
+    this->messageTextEdit->setFocus();
+}
+// 下划线
+void ChatWidget::underlineToolBtn_clicked(bool checked)
+{
+    this->messageTextEdit->setFontUnderline(underBtn);
+    if(underBtn)
+    {
+        underBtn = 0;
+    }
+    else
+    {
+        underBtn = 1;
+    }
+    this->messageTextEdit->setFocus();
+}
+// 字体颜色
+void ChatWidget::colorToolBtn_clicked()
+{
+    color = QColorDialog::getColor(color, this);
+        if (color.isValid())
+        {
+            this->messageTextEdit->setTextColor(color);
+            this->messageTextEdit->setFocus();
+        }
+}
+// 更改按钮状态
+void ChatWidget::currentFormatChanged(const QTextCharFormat &format)
+{
+    fontComboBox->setCurrentFont(format.font());
+    // 如果字体大小出错(因为我们最小的字体为9)，使用12
+    if (format.fontPointSize() < 9)
+    {
+        this->sizeCombox->setCurrentIndex(3);
+    }
+    else
+    {
+        this->sizeCombox->setCurrentIndex(this->sizeCombox
+                                    ->findText(QString::number(format.fontPointSize())));
+    }
+    this->boldTolBtn->setChecked(format.font().bold());
+    this->italicToolBtn->setChecked(format.font().italic());
+    this->underlineToolBtn->setChecked(format.font().underline());
+    this->color = format.foreground().color();
+}
+// 保存聊天记录
+void ChatWidget::saveToolBtn_clicked()
+{
+    if(this->messageBroswer->document()->isEmpty())
+    {
+        QMessageBox::warning(0, tr("警告"), tr("聊天记录为空，无法保存！"), QMessageBox::Ok);
+    }
+    else
+    {
+        QString fileName = QFileDialog::getSaveFileName(this,
+                                                        tr("保存聊天记录"), tr("聊天记录"), tr("文本(*.txt);;All File(*.*)"));
+        if(!fileName.isEmpty())
+            saveFile(fileName);
+    }
+
+}
+// 清空聊天记录
+void ChatWidget::clearToolBtn_clicked()
+{
+    this->messageBroswer->clear();
+}
+// 退出按钮
+void ChatWidget::exitButton_clicked()
+{
+    close();
+}
+// 保存文件
+bool ChatWidget::saveFile(const QString& fileName)
+{
+    QFile file(fileName);
+    if (!file.open(QFile::WriteOnly | QFile::Text)) {
+        QMessageBox::warning(this, tr("保存文件"),
+                             tr("无法保存文件 %1:\n %2").arg(fileName)
+                             .arg(file.errorString()));
+        return false;
+    }
+    QTextStream out(&file);
+    out << this->messageBroswer->toPlainText();
+
+    return true;
+}
+
+
+
+//char *ChatWidget::stringCatenate(char *dest_str, char *src_str)
+//{
+//    char *dtemp = NULL;
+//    char *stemp = NULL;
+//    dtemp = dest_str;
+//    stemp = src_str;
+//    while(*dtemp != '\0')
+//    {
+//        dtemp++;
+//    }
+//    while(*stemp != '\0')
+//    {
+//        *dtemp = *stemp;
+//        dtemp++;
+//        stemp++;
+//    }
+//    *dtemp = '\0';
+//    return dest_str;
+//}

@@ -17,21 +17,20 @@
 #include <QGridLayout>
 #include <QHeaderView>
 #include <QFile>
-
-//PART06_3
 #include <QByteArray>
-
-//PART04改版添加
 #include "login.h"
 #include "registered.h"
-
-//PART05最简单客户端功能添加
 #include <QtNetwork>
 #include <QAbstractSocket>
+
+
+/*PART07*/
+#include <QDataStream>
+#include <QColorDialog>
+#include <QFileDialog>
+#include <QFile>
+
 class QTcpSocket;
-
-
-
 class QTextBrowser;
 class QFontComboBox;
 class QComboBox;
@@ -45,6 +44,10 @@ class QLabel;
 class Login;
 class Registered;
 
+extern bool boldBtn;
+extern bool italBtn;
+extern bool underBtn;
+
 class ChatWidget : public QWidget
 {
     Q_OBJECT
@@ -52,10 +55,12 @@ class ChatWidget : public QWidget
 public:
     ChatWidget(QWidget *parent = nullptr);
     ~ChatWidget();
-    //合并char
-    char *stringCatenate(char *dest_str, char *src_str);
-
     QTcpSocket *socket;
+    bool saveFile(const QString& fileName);
+//    //合并char
+//    char *stringCatenate(char *dest_str, char *src_str);
+
+
 private:
     QTextBrowser *messageBroswer;//信息文字浏览器
     QFontComboBox *fontComboBox;//字体组合框
@@ -74,23 +79,39 @@ private:
     QPushButton *exitBtn;//退出按钮
     QPushButton *refreshBtn;//刷新按钮
     QLineEdit *chooseusrNumber;//选择用户编号
-
-    //PART04改版添加
     QPushButton *loginBtn;//登陆弹窗按钮
     QPushButton *regBtn;//注册弹窗按钮
 
-
-
-
-
+    /*PART07*/
+    QColor color;
+    QString fileName;
 private slots:
     void setIP();
     void setusrname();
     void upload();
-
-    //PART06_1
     void receiveMessage();//接收信息
     void sendMessage();
+    //各类按钮
+    //更改字体族
+    void fontComboBoxcurrentFontChanged(const QFont &f);
+    //更改字体大小
+    void sizeComboBox_currentIndexChanged(const QString &arg1);
+    //加粗
+    void boldToolBtn_clicked(bool checked);
+    //倾斜
+    void italicToolBtn_clicked(bool checked);
+    //下划线
+    void underlineToolBtn_clicked(bool checked);
+    //字体颜色
+    void colorToolBtn_clicked();
+    //输入框更新
+    void currentFormatChanged(const QTextCharFormat &format);
+    //保存聊天记录
+    void saveToolBtn_clicked();
+    //清除聊天记录
+    void clearToolBtn_clicked();
+    //退出
+    void exitButton_clicked();
 
 };
 #endif // CHATWIDGET_H
