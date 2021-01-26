@@ -65,11 +65,11 @@ void registe(char*buffer,int sock_fd)
         if(infolist[i].clientfd!=99)
         {
             infolist[i].clientfd=sock_fd;
-            do
-            {
-                infolist[i].name[j-1]=buffer[j];
-                j++;
-            } while (buffer[j]=='\0');
+            // do
+            // {
+            //     infolist[i].name[j-1]=buffer[j];
+            //     j++;
+            // } while (buffer[j]=='\0');
             break;
         }
     }
@@ -272,7 +272,7 @@ int main(int argc,char *argv[])
         {            
             printf("Client（%s）has connected。Opening a new thread\n",inet_ntoa(clientaddr.sin_addr));
         }
-        
+        registe(infolist,clientfd);
         //连接已经建立，为每一个用户建立线程        
         if (pthread_create(&serverid, NULL, (void *)(&servant), (void *)(&clientfd)))
         {
