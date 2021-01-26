@@ -33,10 +33,8 @@ void freshlist(clientinfo*backup)
 {
     pthread_mutex_lock(&mutex);
     for (int i = 0; i < ClientMAX; i++)
-        backup[i]=infolist[i];
+       backup[i]=infolist[i];
     pthread_mutex_unlock(&mutex);
-    for(int i=0;i<ClientMAX;i++)
-        printf("clientfd:%d,clientname:%s\n",backup[i].clientfd,backup[i].name);
 }
 //线程把用户列表发送出去
 void sendlist(clientinfo* list,int sock_fd)
@@ -48,7 +46,7 @@ void sendlist(clientinfo* list,int sock_fd)
         memset(buffer,0,sizeof(buffer));
         sprintf(buffer,"%d",i);
         strcat(buffer,list[i].name);
-        if (send(sock_fd,buffer,sizeof(buffer),0)<=0)//01
+        if (send(sock_fd,buffer,sizeof(buffer),0))
         {
             perror("User List send fail");
             continue;
@@ -125,49 +123,36 @@ void servant(void * sock_fd)
             continue;
         }
         printf("%s\n",buffer);
-        /*如果用户不再列表里面，不与理会*/
-        // if(check(backup,master_fd))
-        //    continue;
-        /*用户请求用户列表*/
+        //如果用户不再列表里面，不与理会
+        if(check(backup,master_fd))
+            continue;
+        //用户请求用户列表
         if (buffer[0]=='2')
         {
             printf("Client请求用户列表\n");
             sendlist(backup,master_fd);
         }
-        /*用户退出聊天*/
+        //用户退出聊天
         if(buffer[0]=='4')
         {
             printf("pid: %u, tid: %u (0x%x)out!\n", (unsigned int)pid, (unsigned int)tid, (unsigned int)tid);
+            clean(master_fd);
+            close(master_fd);
+            pthread_exit(NULL);
             break;
         }
-        /*用户注册用户列表*/
-        // if(buffer[0]=='3')
-        // {
-        //     printf("Client register\n");
-        //     pthread_mutex_lock(&mutex);
-        //     int j=1;
-        //     for (int i = 0; i < ClientMAX; i++)
-        //     {
-        //         if(infolist[i].clientfd!=99)
-        //         {
-        //             infolist[i].clientfd=master_fd;
-        //             do
-        //             {
-        //                 infolist[i].name[j-1]=buffer[j];
-        //                 j++;
-        //             } while (buffer[j]=='\0');
-        //             break;
-        //         }
-        //     }
-        //     pthread_mutex_unlock(&mutex);
-        //     //registe(buffer,master_fd);
-        // }
-        /*服务器转发信息*/
+        //用户注册用户列表
+        if(buffer[0]=='3')
+        {
+            printf("Client register\n");
+            registe(buffer,master_fd);
+        }
+        //服务器转发信息
         if(buffer[0]=='0'||buffer[0]=='1')
         {
-            // temp=(int)buffer[1];
-            // buffer[1]=master_fd;
-            if (send(master_fd,buffer,sizeof(buffer),0))
+            temp=(int)buffer[1];
+            buffer[1]=master_fd;
+            if (send(backup[temp].clientfd,buffer,sizeof(buffer),0))
                 perror("User List send fail");
         }
     }
@@ -269,7 +254,7 @@ int main(int argc,char *argv[])
             printf("Client（%s）has connected。Opening a new thread\n",inet_ntoa(clientaddr.sin_addr));
         }
         //连接已经建立，为每一个用户建立线程
-        if (pthread_create(&serverid, NULL, (void *)(&servant), (void *)(&clientfd)) != 0)
+        if (pthread_create(&serverid, NULL, (void *)(&servant), (void *)(&clientfd)))
         {
             fprintf(stderr, "pthread_create error!\n");
         }

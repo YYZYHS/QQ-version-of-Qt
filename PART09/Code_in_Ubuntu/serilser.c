@@ -48,7 +48,7 @@ void sendlist(clientinfo* list,int sock_fd)
         memset(buffer,0,sizeof(buffer));
         sprintf(buffer,"%d",i);
         strcat(buffer,list[i].name);
-        if (send(sock_fd,buffer,sizeof(buffer),0)<=0)//01
+        if (send(sock_fd,buffer,sizeof(buffer),0)<=0)
         {
             perror("User List send fail");
             continue;
@@ -165,15 +165,14 @@ void servant(void * sock_fd)
         /*服务器转发信息*/
         if(buffer[0]=='0'||buffer[0]=='1')
         {
-            // temp=(int)buffer[1];
+            temp=(int)buffer[1];
             // buffer[1]=master_fd;
-            if (send(master_fd,buffer,sizeof(buffer),0))
-                perror("User List send fail");
+            if (send(temp,buffer,sizeof(buffer),0)<=0)
+                perror("message send");
         }
     }
     return;
 }
-
 
 int main(int argc,char *argv[])   
 {
@@ -251,6 +250,11 @@ int main(int argc,char *argv[])
         infolist[i].clientfd=99;
         memset(&infolist[i].name,0,sizeof(infolist[i].name));
     }
+    //实验用户列表
+    char testname[]="testname1";
+    infolist[0].clientfd=1;
+    strcpy(infolist[0].name,testname);
+
     //初始化线程互斥锁
     pthread_mutex_init(&mutex, NULL);
 
@@ -268,8 +272,9 @@ int main(int argc,char *argv[])
         {            
             printf("Client（%s）has connected。Opening a new thread\n",inet_ntoa(clientaddr.sin_addr));
         }
-        //连接已经建立，为每一个用户建立线程
-        if (pthread_create(&serverid, NULL, (void *)(&servant), (void *)(&clientfd)) != 0)
+        
+        //连接已经建立，为每一个用户建立线程        
+        if (pthread_create(&serverid, NULL, (void *)(&servant), (void *)(&clientfd)))
         {
             fprintf(stderr, "pthread_create error!\n");
         }
