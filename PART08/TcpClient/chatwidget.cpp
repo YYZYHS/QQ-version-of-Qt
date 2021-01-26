@@ -190,15 +190,18 @@ ChatWidget::ChatWidget(QWidget *parent)
 
     connect(fontComboBox,SIGNAL(currentFontChanged(const QFont)),this,SLOT(fontComboBoxcurrentFontChanged(const QFont)));
     connect(sizeCombox,SIGNAL(currentIndexChanged(const QString)),this,SLOT(sizeComboBox_currentIndexChanged(const QString)));
-    connect(boldTolBtn,SIGNAL(clicked(bool)),this,SLOT(boldToolBtn_clicked(bool)));
-    connect(italicToolBtn,SIGNAL(clicked(bool)),this,SLOT(italicToolBtn_clicked(bool)));
-    connect(underlineToolBtn,SIGNAL(clicked(bool)),this,SLOT(underlineToolBtn_clicked(bool)));
+    connect(boldTolBtn,SIGNAL(clicked(bool)),this,SLOT(boldToolBtn_clicked()));
+    connect(italicToolBtn,SIGNAL(clicked(bool)),this,SLOT(italicToolBtn_clicked()));
+    connect(underlineToolBtn,SIGNAL(clicked(bool)),this,SLOT(underlineToolBtn_clicked()));
     connect(colorToolBtn,SIGNAL(clicked(bool)),this,SLOT(colorToolBtn_clicked()));
     connect(saveToolBtn,SIGNAL(clicked(bool)),this,SLOT(saveToolBtn_clicked()));
     connect(clearToolBtn,SIGNAL(clicked(bool)),this,SLOT(clearToolBtn_clicked()));
     connect(exitBtn,SIGNAL(clicked(bool)),this,SLOT(exitButton_clicked()));
     connect(messageTextEdit, SIGNAL(currentCharFormatChanged(QTextCharFormat)),
                 this, SLOT(currentFormatChanged(const QTextCharFormat)));
+
+    /*part08*/
+    connect(refreshBtn,SIGNAL(clicked()),this,SLOT(F5()));
 
 }
 
@@ -218,6 +221,7 @@ void ChatWidget::setIP()
 void ChatWidget::setusrname()
 {
     Registered b;
+    connect(&b,SIGNAL(sendusr()),this,SLOT(sendusrname()));
     b.exec();
 }
 
@@ -238,18 +242,20 @@ void ChatWidget::receiveMessage()
     //PART06_4
     QByteArray arr = socket->readAll();//读取
     QString str = arr.data();//转换
+    //char buffer[1024];
+
     messageBroswer->setText(str);
     //messageBroswer->verticalScrollBar();
 
-    //一个小功能
-    if(str == "111")
-    {
-        this->hide();//隐藏窗口
-    }
-    else if(str == "222")
-    {
-        this->show();//显示窗口
-    }
+//    //一个小功能
+//    if(str == "111")
+//    {
+//        this->hide();//隐藏窗口
+//    }
+//    else if(str == "222")
+//    {
+//        this->show();//显示窗口
+//    }
 }
 
 void ChatWidget::sendMessage()
@@ -273,7 +279,7 @@ void ChatWidget::sendMessage()
     QString str = messageTextEdit->toPlainText();
     QString data;
     QTextStream out(&data,QIODevice::WriteOnly);
-    out<<0<<aim<<str;
+    out<<0<<aim<<str<<'\0';
     socket->write(data.toUtf8().data(),strlen(data.toUtf8().data()));
 }
 
@@ -291,7 +297,7 @@ void ChatWidget::sizeComboBox_currentIndexChanged(const QString &arg1)
     this->messageTextEdit->setFocus();
 }
 // 加粗
-void ChatWidget::boldToolBtn_clicked(bool checked)
+void ChatWidget::boldToolBtn_clicked()
 {
     qDebug()<<"321";
     if(boldBtn)//boldBtn == 1
@@ -308,7 +314,7 @@ void ChatWidget::boldToolBtn_clicked(bool checked)
         this->messageTextEdit->setFocus();
 }
 // 倾斜
-void ChatWidget::italicToolBtn_clicked(bool checked)
+void ChatWidget::italicToolBtn_clicked()
 {
     this->messageTextEdit->setFontItalic(italBtn);
     if(italBtn)
@@ -322,7 +328,7 @@ void ChatWidget::italicToolBtn_clicked(bool checked)
     this->messageTextEdit->setFocus();
 }
 // 下划线
-void ChatWidget::underlineToolBtn_clicked(bool checked)
+void ChatWidget::underlineToolBtn_clicked()
 {
     this->messageTextEdit->setFontUnderline(underBtn);
     if(underBtn)
@@ -406,24 +412,27 @@ bool ChatWidget::saveFile(const QString& fileName)
     return true;
 }
 
+void ChatWidget::sendusrname()
+{
+    //发送信息
 
+        //PART07_1
+        //按照开头的第一个字节确定需要选择的信息发送方式
+        //0 ---- 发送消息
+        //1 ---- 发送文件
+        //2 ---- 请求刷新在线用户列表
+        //3 ---- 注册用户
+        QString data;
+        QTextStream out(&data,QIODevice::WriteOnly);
+        out<<3<<UsrName<<'\0';
+        socket->write(data.toUtf8().data(),strlen(data.toUtf8().data()));
+}
 
-//char *ChatWidget::stringCatenate(char *dest_str, char *src_str)
-//{
-//    char *dtemp = NULL;
-//    char *stemp = NULL;
-//    dtemp = dest_str;
-//    stemp = src_str;
-//    while(*dtemp != '\0')
-//    {
-//        dtemp++;
-//    }
-//    while(*stemp != '\0')
-//    {
-//        *dtemp = *stemp;
-//        dtemp++;
-//        stemp++;
-//    }
-//    *dtemp = '\0';
-//    return dest_str;
-//}
+void ChatWidget::F5()
+{
+    QString data;
+    QTextStream out(&data,QIODevice::WriteOnly);
+    out<<2<<'\0';
+    socket->write(data.toUtf8().data(),strlen(data.toUtf8().data()));
+}
+

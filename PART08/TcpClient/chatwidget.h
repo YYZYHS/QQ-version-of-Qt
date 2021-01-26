@@ -91,17 +91,18 @@ private slots:
     void upload();
     void receiveMessage();//接收信息
     void sendMessage();
+    void sendusrname();
     //各类按钮
     //更改字体族
     void fontComboBoxcurrentFontChanged(const QFont &f);
     //更改字体大小
     void sizeComboBox_currentIndexChanged(const QString &arg1);
     //加粗
-    void boldToolBtn_clicked(bool checked);
+    void boldToolBtn_clicked();
     //倾斜
-    void italicToolBtn_clicked(bool checked);
+    void italicToolBtn_clicked();
     //下划线
-    void underlineToolBtn_clicked(bool checked);
+    void underlineToolBtn_clicked();
     //字体颜色
     void colorToolBtn_clicked();
     //输入框更新
@@ -112,6 +113,8 @@ private slots:
     void clearToolBtn_clicked();
     //退出
     void exitButton_clicked();
+    //刷新用户列表
+    void F5();
 
 };
 #endif // CHATWIDGET_H

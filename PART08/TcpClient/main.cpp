@@ -8,7 +8,7 @@
 
 QString ip;
 int port;
-
+QString UsrName;
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);

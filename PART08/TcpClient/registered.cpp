@@ -23,18 +23,9 @@ Registered::Registered()
 
 void Registered::Register()
 {
-    qDebug()<<"0";
-    if(1)
-    {
-        qDebug()<<"1";
-        accept();
-        qDebug()<<"2";
-    }
-    else
-    {
-        QMessageBox::warning(this,"警告！","用户名或密码错误！",QMessageBox::Yes);
-//        IPLineEdit->clear();
-//        portLabel->clear();
-//        IPLineEdit->setFocus();
-    }
+    //全局变量赋值
+    UsrName = this->usrname->text();
+    this->hide();//隐藏对话框
+    qDebug()<<"2333";
+    emit sendusr();//发射信号
 }

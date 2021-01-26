@@ -48,7 +48,7 @@ void sendlist(clientinfo* list,int sock_fd)
         memset(buffer,0,sizeof(buffer));
         sprintf(buffer,"%d",i);
         strcat(buffer,list[i].name);
-        if (send(sock_fd,buffer,sizeof(buffer),0))
+        if (send(sock_fd,buffer,sizeof(buffer),0)<=0)//01
         {
             perror("User List send fail");
             continue;

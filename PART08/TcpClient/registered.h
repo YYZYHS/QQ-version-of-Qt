@@ -8,6 +8,8 @@
 #include <QVBoxLayout>
 #include <QMessageBox>
 
+extern QString UsrName;
+
 class QPushButton;
 class QLineEdit;
 class QVBoxLayout;
@@ -22,6 +24,9 @@ private:
     QPushButton *registered;//注册按钮
 private slots:
     void Register();
+signals:
+    void sendusr();
+
 
 };
 
