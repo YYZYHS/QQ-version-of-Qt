@@ -1,142 +1,285 @@
-#include <stdio.h>
-#include <arpa/inet.h>
+#include <pthread.h>
+#include <fcntl.h>
+#include <netinet/in.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h> //memset
+#include <string.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
-#include <sys/types.h>
 
-#define INET_ADDRSTRLEN 16
+#define LENGTH_OF_LISTEN_QUEUE 20
+#define BUFFER_SIZE 1024
+#define SHMBUFSZ 2048
+#define FILE_NAME_MAX_SIZE 512
+#define ClientMAX 10
 
-
-int main(int argc,char *argv[])
+typedef struct clientinfo
 {
-	/*
-	  *
-	  *argc ---- 指示程序启动时命令行参数的个数
-	  *
-	  *argv ---- 则包含具体的参数字符串
-	*/
-	//预备工作：检查参数是否正确
-	if (argc !=2)
-	{
-		printf("请输入正确的参数\n如：./server 5005\n\n");
-		return -1;//非成功结束
-	}
-	//第一步：创建插座
-	/*
-	  *插座特点
-		1.系统不自动分配端口
-		2.初始化插座是主动的，需要手动调节成被动（监听）模式
-	  *功能：创建一个用于网络通信的I/O描述符（插座）
-	  *int socket(int family, int type, int protocol)
-	   *int socket(协议族    ,插座类型,协议类别)
-	*/
-	int serverfd;	//服务器的插座
-	if((serverfd = socket(AF_INET,SOCK_STREAM,0)) == -1)
-	{
-		perror("socket");
-		return -1;
-	}				//插座创建成功
+    char name[10];
+    int clientfd;
+    //void *sock_fd;
+} clientinfo;
+clientinfo infolist[ClientMAX]; //用户列表（数组）
+pthread_mutex_t mutex;          //互斥锁
 
-	//第二步 把服务端用于通信的地址和端口绑定到socket上
-	/*
-	  *
-	  *int bind(int sockfd,const struct sockaddr *myaddr,socklen_t addrlen)
-	  *int bind(socket插座,指向特定于协议的地址结构指针,该地址结构的长度)
-	  *功能 将本地协议地址与服务器插座文件符(serverfd)绑定
+void freshlist(clientinfo *backup);
+void sendlist(clientinfo *list, int sock_fd);
+void registe(char *buffer, int sock_fd);
+int check(clientinfo *backup, int sock_fd);
+void servant(void *sock_fd);
 
-	  *sockaddr_in ：在IPv4因特网域(AF_INET)中,套接字地址结构用sockaddr_in命名
-	*/
+int main(int argc, char *argv[])
+{
+    int serverfd;
+    int clientfd;
+    int iret;
+    pthread_t serverid;
 
-	struct sockaddr_in servaddr;	//定义服务端地址信息的数据结构
-	memset(&servaddr,0,sizeof(servaddr));//初始化servaddr
-	servaddr.sin_family = AF_INET;
-	//协议族，在socket编程中只能是AF_INET
-	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	//任意ip地址
-	//inet_addr("192.168.190.134"); // 指定ip地址
-	servaddr.sin_port = htons(atoi(argv[1]));//指定通信端口
+    /*sockaddr_in详解*/
+    //sockaddr_in 是internet环境下套接字的地址形式
+    // struct sockaddr_in
+    // {
+    //    short sin_family;/*Address family一般来说AF_INET（地址族）PF_INET（协议族）*/
+    //    unsigned short sin_port;/*Port number(必须要采用网络数据格式,普通数字可以用htons()函数转换成网络数据格式的数字)*/
+    //    struct in_addr sin_addr;/*IP address in network byte order（Internet address）*/
+    //    unsigned char sin_zero[8];/*Same size as struct sockaddr没有实际意义,只是为了　跟SOCKADDR结构在内存中对齐*/
+    // };
+    struct sockaddr_in servaddr;
+    struct sockaddr_in clientaddr;
 
-	if(bind(serverfd,(struct sockaddr *)&servaddr,sizeof(servaddr)) != 0)
-	{
-		perror("bind");
-		close(serverfd);
-		return -1;
-	}								//开始绑定
+    //网络初始化
+    int socklen = sizeof(struct sockaddr_in);
+    /*socket()*/
+    // 我们使用系统调用socket()来获得文件描述符：
+    // #include<sys/types.h>
+    // #include<sys/socket.h>
+    // int socket(int domain,int type,int protocol);
+    // 第一个参数domain设置为“AF_INET”。
+    // 第二个参数是套接口的类型：SOCK_STREAM或
+    // SOCK_DGRAM。第三个参数设置为0。
+    // 系统调用socket()只返回一个套接口描述符，如果出错，则返回-1。
+    if ((serverfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    {
+        perror("socket");
+        return -1;
+    }
+    /*memset()*/
+    // 这个函数在socket中多用于清空数组.如:原型是memset(buffer, 0, sizeof(buffer))
+    // Memset 用来对一段内存空间全部设置为某个字符，一般用在对定义的字符串进行初始化为‘ ’或‘/0’；
+    memset(&servaddr, 0, sizeof(servaddr));
 
-	//第3步：把socket设置为监听模式
+    //TCP set
+    servaddr.sin_family = AF_INET;
+    /*htonl()*/
+    //htonl就是把本机字节顺序转化为网络字节顺序
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    /*htons()*/
+    //将主机的无符号短整形数转换成网络字节顺序。
+    servaddr.sin_port = htons(atoi(argv[1]));
 
-	/*
-	  *int listen(int sockfd, int backlog)
-	  *int listen(socket监听插座，连接队列的长度)
-	  *功能 将插座由主动修改为被动
-	  *	   使os为该插座设置一个连接队列，用来记录所有连接到该插座的连接
-	*/
-	if(listen(serverfd,10) != 0)
-	{
-		perror("listen");
-		close(serverfd);
-		return -1;
-	}
+    /*TCP bind*/
+    //bind()用来设置给参数sockfd的socket一个名称。此名称由参数my_addr指向一sockaddr结构，对于不同的socket domain定义了一个通用的数据结构
+    //绑定一个端口
+    if (bind(serverfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != 0)
+    {
+        perror("bind");
+        close(serverfd);
+        return -1;
+    }
 
-	//第4步：接受客户端的连接
+    /*TCP listen*/
+    //监听来自客户端的tcp socket的连接请求
+    if (listen(serverfd, 10) != 0)
+    {
+        perror("listen");
+        close(serverfd);
+        return -1;
+    }
 
-	/*
-	  *int accept(int sockfd,struct sockaddr *cliaddr,socklen_t *addrlen);
-	  *int accept(socket监听插座,用于存放客户端插座地址结构,插座地址结构体长度);
-	  *功能 从已连接队列中取出一个已经建立的连接，如果没有任何连接可用，则进入睡眠等待
-	  *accept函数返回的是一个已连接套接字，这个套接字代表当前这个连接
-	*/
-	
-	int clientfd;		//声明客户端的插座
-	int socklen = sizeof(struct sockaddr_in);  //获得插座地址结构struct sockaddr_in的大小
-	struct sockaddr_in clientaddr;		//声明客户端地址数据结构
-	//接受连接
-	clientfd = accept(serverfd,(struct sockaddr *)&clientaddr,(socklen_t*)&socklen);
-	printf("客户端（%s）已连接。\n",inet_ntoa(clientaddr.sin_addr));
+    //localinit
+    //clientlist init
+    //初始化用户列表（数组）
+    for (int i = 0; i < ClientMAX; i++)
+    {
+        infolist[i].clientfd = 99;
+        memset(&infolist[i].name, 0, sizeof(infolist[i].name));
+    }
+    //实验用户列表
+    char testname[] = "testname1";
+    infolist[0].clientfd = 1;
+    strcpy(infolist[0].name, testname);
 
-	//第5步：与客户端通信，接收客户端发过来的报文后，回复ok。
+    //初始化线程互斥锁
+    pthread_mutex_init(&mutex, NULL);
 
-	/*
-	  *ssize_t recv(int sockfd, void *buf,size_t nbytes, int flags);
-	  *ssize_t recv(客户端插座, 指向接收网络数据的缓冲区,
-								接收缓冲区的大小(以字节为单位), 套接字标志(常为0));
-	  *返回值：成功接收到的数据字节数
+    while (1)
+    {
+        //建立链接
+        socklen_t clientaddrlength = sizeof(clientaddr);
+        clientfd = accept(serverfd, (struct sockaddr *)&clientaddr, (socklen_t *)&clientaddrlength);
+        if (clientfd < 0)
+        {
+            perror("Server Accept Failed");
+            break;
+        }
+        else
+        {
+            printf("Client（%s）has connected。Opening a new thread\n", inet_ntoa(clientaddr.sin_addr));
+        }
+        registe(infolist, clientfd);
+        //连接已经建立，为每一个用户建立线程
+        if (pthread_create(&serverid, NULL, (void *)(&servant), (void *)(&clientfd)))
+        {
+            fprintf(stderr, "pthread_create error!\n");
+        }
+        //线程分离
+        pthread_detach(serverid);
+    }
+    //摧毁线程互斥锁
+    pthread_mutex_destroy(&mutex);
+    //关闭套接子
+    close(serverfd);
+}
 
+//线程拷贝一份用户列表到自己
+void freshlist(clientinfo *backup)
+{
+    pthread_mutex_lock(&mutex);
+    for (int i = 0; i < ClientMAX; i++)
+        backup[i] = infolist[i];
+    pthread_mutex_unlock(&mutex);
+    for (int i = 0; i < ClientMAX; i++)
+        printf("clientfd:%d,clientname:%s\n", backup[i].clientfd, backup[i].name);
+}
+//线程把用户列表发送出去
+void sendlist(clientinfo *list, int sock_fd)
+{
+    freshlist(list);
+    char buffer[BUFFER_SIZE];
+    for (int i = 0; i < ClientMAX; i++)
+    {
+        memset(buffer, 0, sizeof(buffer));
+        sprintf(buffer, "%d", i);
+        strcat(buffer, list[i].name);
+        if (send(sock_fd, buffer, sizeof(buffer), 0) <= 0)
+        {
+            perror("User List send fail");
+            continue;
+        }
+    }
+}
+//线程将用户注册进用户列表
+void registe(char *buffer, int sock_fd)
+{
+    pthread_mutex_lock(&mutex);
+    int j = 1;
+    for (int i = 0; i < ClientMAX; i++)
+    {
+        if (infolist[i].clientfd == 99)
+        {
+            infolist[i].clientfd = sock_fd;
+            // do
+            // {
+            //     infolist[i].name[j-1]=buffer[j];
+            //     j++;
+            // } while (buffer[j]=='\0');
+            break;
+        }
+    }
+    pthread_mutex_unlock(&mutex);
+}
+//线程检查用户是否在用户列表里面
+int check(clientinfo *backup, int sock_fd)
+{
+    for (int i = 0; i < ClientMAX; i++)
+        if (sock_fd == backup[i].clientfd)
+            return 0;
+    return 1;
+}
+//线程将自己对应的用户从列表里删除
+void clean(int sock_fd)
+{
+    pthread_mutex_lock(&mutex);
+    int j = 1;
+    for (int i = 0; i < ClientMAX; i++)
+    {
+        if (infolist[i].clientfd == sock_fd)
+        {
+            infolist[i].clientfd = 99;
+            memset(&infolist[i].name, 0, sizeof(infolist[i].name));
+            break;
+        }
+    }
+    pthread_mutex_unlock(&mutex);
+}
 
-	  *ssize_t send(int sockfd, const void* buf, size_t nbytes, int flags);
-	  *ssize_t send(服务端插座, 待发送数据缓存区的地址, 
-								发送缓存区大小(以字节为单位), 套接字标志(常为0));
-	  *功能：用于发送数据 注意：不能用TCP协议发送0长度的数据包
-	  *返回值：成功发送的字节数
-	*/
-	char buffer[1024];		//声明缓冲区
-	while (1)
-	{
-		int iret;
-		memset(buffer,0,sizeof(buffer));//初始化缓冲区
-		//接收客户端的请求报文
-		if((iret = recv(clientfd,buffer,sizeof(buffer),0)) <= 0)
-		{
-			printf("iret=%d\n",iret);
-			break;
-		}
-		printf("接受：%s\n",buffer);//显示接受到的消息
+void servant(void *sock_fd)
+{
+    //init
+    int master_fd = *((int *)sock_fd);
+    char buffer[BUFFER_SIZE];
+    //检查进程号，线程号和文件描述副
+    pid_t pid = getpid();
+    pthread_t tid = pthread_self();
+    printf("pid: %u, tid: %u (0x%x)\n", (unsigned int)pid, (unsigned int)tid, (unsigned int)tid);
+    printf("The masterfd=%d\n", master_fd);
+    //创立用户列表的备份
+    clientinfo backup[ClientMAX];
 
-		//向客户端发送响应结果
-		if ( (iret=send(clientfd,buffer,strlen(buffer),0))<=0) 
-		{
-			perror("send");
-			break;
-		}
-		printf("发送：%s\n",buffer);//显示发送出去的消息
-	}
+    int masternum; //保存发送目标的编号
+    int temp;      //临时存储
+    freshlist(backup);
+    while (1)
+    {
+        memset(buffer, 9, sizeof(buffer)); //清空缓存
+        if (recv(master_fd, buffer, BUFFER_SIZE, 0) < 0)
+        {
+            perror("Server Recieve Data Failed:");
+            continue;
+        }
+        printf("%s\n", buffer);
+        /*如果用户不再列表里面，不与理会*/
+        // if(check(backup,master_fd))
+        //    continue;
+        /*用户请求用户列表*/
+        if (buffer[0] == '2')
+        {
+            printf("Client请求用户列表\n");
+            sendlist(backup, master_fd);
+        }
+        /*用户退出聊天*/
+        if (buffer[0] == '4')
+        {
+            printf("pid: %u, tid: %u (0x%x)out!\n", (unsigned int)pid, (unsigned int)tid, (unsigned int)tid);
+            break;
+        }
 
-
-	// 第6步：关闭socket，释放资源
-	close(serverfd);
-	close(clientfd);
-	
+        /*服务器转发信息*/
+        if (buffer[0] == '0' || buffer[0] == '1')
+        {
+            int tarfd = (int)buffer[1];
+            // buffer[1]=master_fd;
+            /*群发*/
+            for (int i = 0; i < ClientMAX; i++)
+                if (infolist[i].clientfd != 99)
+                    if (send(infolist[i].clientfd, buffer, sizeof(buffer), 0) <= 0)
+                        perror("message send");
+            // for(int i=0;i<ClientMAX;i++)
+            //     if(infolist[i].clientfd!=99 && infolist[i].clientfd == buffer[1])
+            //         if (send(infolist[i].clientfd,buffer,sizeof(buffer),0)<=0)
+            //             perror("message send");
+            // /*单发*/
+            // //printf("temp:%d",temp);
+            // // if(infolist[temp].clientfd!=99)
+            //     // if (send(infolist[tarfd].clientfd,buffer,sizeof(buffer),0)<=0)
+            //     //     perror("message send");
+        }
+    }
+    return;
 }
